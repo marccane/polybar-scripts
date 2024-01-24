@@ -1,15 +1,15 @@
 #!/bin/sh
 
 network_print() {
-    connection_list=$(nmcli -t -f name,type,device,state connection show --order name --active 2>/dev/null | grep -v ':bridge:')
+    connection_list=$(nmcli -t -f name,type,device,state connection show --order name --active 2>/dev/null | grep -v ':bridge:\|:lo:')
     counter=0
 
     if [ -n "$connection_list" ] && [ "$(echo "$connection_list" | wc -l)" -gt 0  ]; then
         echo "$connection_list" | while read -r line; do
-            description=$(echo "$line" | cut -d ':' -f 1)
-            type=$(echo "$line" | cut -d ':' -f 2)
-            device=$(echo "$line" | cut -d ':' -f 3)
-            state=$(echo "$line" | cut -d ':' -f 4)
+            description=$(echo "$line" | sed -e 's/\\:/-/g' | cut -d ':' -f 1)
+            type=$(echo "$line" | sed -e 's/\\:/-/g' | cut -d ':' -f 2)
+            device=$(echo "$line" | sed -e 's/\\:/-/g' | cut -d ':' -f 3)
+            state=$(echo "$line" | sed -e 's/\\:/-/g' | cut -d ':' -f 4)
 
             if [ "$state" = "activated" ]; then
                 if [ "$type" = "802-11-wireless" ]; then
@@ -34,7 +34,13 @@ network_print() {
                     fi
 
                     description="$description ($speed)"
+                elif [ "$type" = "bluetooth" ]; then
+                    icon="#3"
                 fi
+            elif [ "$state" = "activating" ]; then
+                icon="#4"
+            elif [ "$state" = "deactivating" ]; then
+                icon="#5"
             fi
 
             if [ $counter -gt 0 ]; then
@@ -48,35 +54,18 @@ network_print() {
 
         printf "\n"
     else
-        echo "#3"
+        echo "#6"
     fi
 }
 
-network_update() {
-    pid=$(cat "$path_pid")
+trap exit INT
 
-    if [ "$pid" != "" ]; then
-        kill -10 "$pid"
-    fi
-}
+while true; do
+    network_print
 
-path_pid="/tmp/polybar-network-networkmanager.pid"
+    timeout 60s nmcli monitor | while read -r REPLY; do
+        network_print
+    done &
 
-case "$1" in
-    --update)
-        network_update
-        ;;
-    *)
-        echo $$ > $path_pid
-
-        trap exit INT
-        trap "echo" USR1
-
-        while true; do
-            network_print
-
-            sleep 60 &
-            wait
-        done
-        ;;
-esac
+    wait
+done

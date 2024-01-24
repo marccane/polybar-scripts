@@ -1,10 +1,6 @@
 #!/bin/sh
 
-if ! updates=$(echo "n" | flatpak update 2> /dev/null | wc -l ); then
-    updates=0
-fi
-
-updates=$((updates - 5))
+updates=$(flatpak update 2>/dev/null | tail -n +5 | grep -Ecv "^$|^Proceed|^Nothing")
 
 if [ "$updates" -gt 0 ]; then
     echo "flatpak: $updates"

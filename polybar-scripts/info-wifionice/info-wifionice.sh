@@ -1,7 +1,19 @@
 #!/bin/sh
 
-if [ "$(iwgetid -r)" = "WIFIonICE" ]; then
-    wifionice=$(curl -sf https://iceportal.de/api1/rs/status)
+icon="#"
+
+current_wifi=$(iwgetid -r)
+if { [ "$current_wifi" = "WIFIonICE" ] || [ "$current_wifi" = "WIFI@DB" ]; }; then
+    # Obtain route info. Bail out if it cannot be obtained or if the response
+    # is not valid JSON (based on jq's exit code).
+    if ! { wifionice=$(curl -sf https://iceportal.de/api1/rs/status); } then
+        echo "$icon In-train portal unreachable"
+        exit 0
+    fi
+    if ! { echo "$wifionice" | jq --exit-status > /dev/null 2>&1; } then
+        echo "$icon In-train portal unreachable"
+        exit 0
+    fi
 
     if [ "$(echo "$wifionice" | jq .connection)" = "true" ]; then
         wifionice_speed=$(echo "$wifionice" | jq .speed)
@@ -27,7 +39,7 @@ if [ "$(iwgetid -r)" = "WIFIonICE" ]; then
             station_delay=""
         fi
 
-        echo "# $station_arrival$station_delay - $station_name, Gl. $station_track$wifionice_speed"
+        echo "$icon $station_arrival$station_delay - $station_name, Gl. $station_track$wifionice_speed"
     fi
 else
     echo ""

@@ -16,6 +16,8 @@ Use the toggle option to power on the controller and try to connect to all paire
 
 Use the `set-alias` feature of `bluetoothctl` to customize your device names.
 
+To enable battery level detection set `Experimental = true` in `/etc/bluetooth/main.conf`.
+
 
 ## Module
 
